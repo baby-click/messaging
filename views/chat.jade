@@ -1,0 +1,34 @@
+doctype html
+html(lang="de")
+	head
+		meta(charset="UTF-8")
+		title= title
+		link(rel="stylesheet", href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css")
+		link(rel="stylesheet", href="/css/main.css")
+	body
+		.container-fluid.full-height
+			.row.full-height
+				.panel.panel-primary.margin-bottom-0.pos-relative.full-height.overflow-hidden
+					.panel-heading
+						span.glyphicon.glyphicon-comment
+						|  Messaging
+					#messagesWrapper.panel-body.full-height.padding-top-0.padding-right-0.padding-bottom-100.padding-left-0
+						ul#messages.padding-left-0.full-height.overflow-auto
+					.panel-footer.pos-fixed.pos-bottom.col-xs-12
+						form(onsubmit="messaging.ui.sendMessage(this, event)")
+							input#messageInput.form-control(type="text", placeholder="Jetzt tippen...")
+		#modalLogin.modal.fade(tabindex="-1", role="dialog", data-backdrop="static", data-keyboard="false", aria-labelledby="modalLoginLabel")
+			.modal-dialog(role="document")
+				.modal-content
+					.modal-header
+						h4#modalLoginLabel.modal-title Anmelden
+					.modal-body
+						form(onsubmit="messaging.ui.login(this, event)")
+							.form-group
+								input#usernameModal.form-control(type="text", name="username", placeholder="username", autofocus="true", required)
+								span.help-block Bitte Username angeben
+		script(src="https://code.jquery.com/jquery-2.1.4.min.js")
+		script(src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js")
+		script(src="https://twemoji.maxcdn.com/twemoji.min.js")
+		script(src="/socket.io/socket.io.js")
+		script(src="/js/main.js")
