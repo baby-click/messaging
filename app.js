@@ -1,15 +1,23 @@
-var express = require('express');
 var path = require('path');
+var morgan = require('morgan');
+var express = require('express');
+var debug = require('debug')('http');
+var bodyParser = require('body-parser');
+var compression = require('compression');
+var cookieParser = require('cookie-parser');
+var expressSession = require('express-session');
+var methodOverride = require('method-override');
+
 var app = express();
+var usernames = {};
 
 var server = require('http').createServer(app);
 var io = require('socket.io')(server);
 var port = process.env.PORT || 3000;
 
-server.listen(port, function() {
-  console.log('Server listening at port %d', port);
-});
-
+app.use(morgan('dev'));
+app.use(compression());
+app.locals.basedir = path.join(__dirname, 'views');
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: 86400000
 }));
@@ -19,6 +27,20 @@ app.set('view options', {
   layout: false,
   pretty: true
 });
+app.use(cookieParser());
+app.use(expressSession({
+  secret: 'secret',
+  cookie: {
+    maxAge: 60000
+  },
+  resave: true,
+  saveUninitialized: true
+}));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({
+  extended: true
+}));
+app.use(methodOverride());
 
 // routes
 app.get('/', function(req, res) {
@@ -27,10 +49,9 @@ app.get('/', function(req, res) {
   });
 });
 
-
-var usernames = {};
-
+// socket
 io.on('connection', function(socket) {
+  debug('new connection to socket');
   var addedUser = false;
 
   socket.on('new message', function(data) {
@@ -69,7 +90,19 @@ io.on('connection', function(socket) {
       delete usernames[socket.username];
 
       socket.broadcast.emit('user left', {
-        username: socket.username,
-      });    }
+        username: socket.username
+      });
+    }
   });
+});
+
+// debug
+app.use('*', function(req, res, next) {
+  debug('express `req.session` data is %j.', req.session);
+  next();
+});
+
+// server
+server.listen(port, function() {
+  console.log('Server listening at port %d', port);
 });
