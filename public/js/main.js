@@ -2,15 +2,19 @@ var messaging = messaging || {};
 var socket = io();
 
 // selectors
+var $body = jQuery('body');
 var $messages = jQuery('#messages');
 var $modalLogin = jQuery('#modalLogin');
 var $messageInput = jQuery('#messageInput');
+var $usernameInput = jQuery('#usernameInput');
 var $usernameModal = jQuery('#usernameModal');
 
 // status
-var connected = false;
-var typing = false;
+var typingTimeout;
+var isConnected = false;
+var isTyping = false;
 var username;
+
 
 /**
  * work with a dedicated object
@@ -18,24 +22,32 @@ var username;
 messaging.ui = {
   init: function() {
     jQuery('.modal').modal('show');
-    $usernameModal.focus();
+    $usernameInput.focus();
   },
 
   update: function(data) {
+    var usernameLocal = username;
+    var typingClassString = '';
     var messageString = data;
     var usernameString = '';
+
+    if (data.typing !== undefined) {
+      typingClassString = 'typing ';
+    }
 
     if (data.message !== undefined) {
       messageString = data.message;
     }
 
     if (data.username !== undefined) {
-      usernameString = '<strong>' + data.username + '</strong>: ';
+      usernameLocal = data.username;
+      usernameString = '<strong>' + usernameLocal + '</strong>: ';
     }
 
     twemoji.size = '16x16';
     messageString = twemoji.parse(messageString);
-    $messages.append('<li class="messages padding-top-6 padding-right-12 padding-bottom-6 padding-left-12">' + usernameString + '' + messageString + '</li>');
+
+    jQuery('<li class="messages" />').data('username', 'HAUS').addClass(typingClassString).html(usernameString + '' + messageString).appendTo($messages);
 
     $messages.animate({
       scrollTop: $messages.get(0).scrollHeight
@@ -53,23 +65,63 @@ messaging.ui = {
     }
   },
 
-  sendMessage: function() {
-    event.preventDefault();
-    var message = jQuery.trim($messageInput.val());
-
-    if (message && connected) {
-      $messageInput.val('');
-      messaging.ui.addMessage(message);
-      socket.emit('new message', message);
-    }
-  },
-
   addMessage: function(data) {
+    var $typingMessage = messaging.ui.findTypingNote(data);
+
+    if ($typingMessage.length !== 0) {
+      $typingMessage.remove();
+    }
+
     messaging.ui.update(data);
   },
 
-  addMessageElement: function() {
+  addTyping: function(data) {
+    isTyping = true;
+    data.typing = true;
+    data.message = 'tippt gerade...';
+    messaging.ui.addMessage(data);
+  },
 
+  removeTyping: function() {
+
+  },
+
+  updateTyping: function() {
+    if (isConnected) {
+      if (!isTyping) {
+        socket.emit('typing');
+      }
+
+      if (typingTimeout !== undefined) {
+        clearTimeout(typingTimeout);
+      }
+
+      typingTimeout = setTimeout(function() {
+        socket.emit('stop typing');
+      }, 450);
+    }
+  },
+
+  findTypingNote: function(data) {
+    return jQuery('.typing').filter(function() {
+      // TODO check if there is a better way
+      return jQuery(this).data('username') === data.username;
+    });
+  },
+
+  sendMessage: function() {
+    event.preventDefault();
+
+    // TODO should be assigned as parameter
+    var message = jQuery.trim($messageInput.val());
+
+    if (message && isConnected) {
+      isTyping = false;
+      $messageInput.val('');
+      messaging.ui.addMessage(message);
+      socket.emit('stop typing');
+      socket.emit('new message', message);
+    }
   }
 };
 
@@ -79,8 +131,9 @@ messaging.socket = {
   }
 };
 
+
 /**
- * listen on specific events
+ * listen on specific socket events
  */
 socket.on('user joined', function(data) {
   messaging.ui.update(data.username + ' hat den raum betreten');
@@ -91,13 +144,37 @@ socket.on('user left', function(data) {
 });
 
 socket.on('login', function() {
-  connected = true;
+  isConnected = true;
   var message = 'Hej ' + username + ' willkommen zurück';
   messaging.ui.update(message);
 });
 
 socket.on('new message', function(data) {
   messaging.ui.addMessage(data);
+});
+
+socket.on('typing', function(data) {
+  messaging.ui.addTyping(data);
+});
+
+socket.on('stop typing', function(data) {
+  messaging.ui.removeTyping(data);
+});
+
+
+/**
+ * eventlistener
+ */
+$messageInput.on('input', function() {
+  messaging.ui.updateTyping();
+});
+
+$body.click(function() {
+  if (isConnected) {
+    $messageInput.focus();
+  } else {
+    $usernameInput.focus();
+  }
 });
 
 /**
