@@ -9,11 +9,13 @@ var $messageInput = jQuery('#messageInput');
 var $usernameInput = jQuery('#usernameInput');
 var $usernameModal = jQuery('#usernameModal');
 
-// status
+// define
 var typingTimeout;
+var username;
+
+// status
 var isConnected = false;
 var isTyping = false;
-var username;
 
 
 /**
@@ -47,7 +49,7 @@ messaging.ui = {
     twemoji.size = '16x16';
     messageString = twemoji.parse(messageString);
 
-    jQuery('<li class="messages" />').data('username', 'HAUS').addClass(typingClassString).html(usernameString + '' + messageString).appendTo($messages);
+    jQuery('<li class="messages" />').attr('data-username', usernameLocal).addClass(typingClassString).html(usernameString + '' + messageString).appendTo($messages);
 
     $messages.animate({
       scrollTop: $messages.get(0).scrollHeight
@@ -82,8 +84,10 @@ messaging.ui = {
     messaging.ui.addMessage(data);
   },
 
-  removeTyping: function() {
-
+  removeTyping: function(data) {
+    messaging.ui.findTypingNote(data).fadeOut(function() {
+      jQuery(this).remove();
+    });
   },
 
   updateTyping: function() {
@@ -104,7 +108,6 @@ messaging.ui = {
 
   findTypingNote: function(data) {
     return jQuery('.typing').filter(function() {
-      // TODO check if there is a better way
       return jQuery(this).data('username') === data.username;
     });
   },
